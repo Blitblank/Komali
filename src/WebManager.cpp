@@ -94,28 +94,20 @@ void wifi::WebManager::run() {
     ws.cleanupClients();
 }
 
-void wifi::WebManager::onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+String wifi::WebManager::onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
+    String message = "";
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-        String message = String((char*)data).substring(0, len);
+        message = String((char*)data).substring(0, len);
         Serial.printf("Received WebSocket Message: %s\n", message.c_str());
 
-        if (message == "get_temp") {
-            String tempMessage = "{\"temperature\": " + String(temperature) + "}";
-            ws.textAll(tempMessage);  // Send to all clients
-			return;
-        }
-
-        // LED Control
-        if (message == "off") {
-            digitalWrite(2, LOW);
-        } else {
-            digitalWrite(2, HIGH);
-        }
-
         // Send response back to WebSocket client
-        ws.textAll("LED set to: " + message);
+        ws.textAll("Acknowledgement: " + message);
+    } else {
+        message = "MESSAGE_ERROR";
     }
+    processCommand(message);
+    return message;
 }
 
 void wifi::WebManager::onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
@@ -126,10 +118,10 @@ void wifi::WebManager::onEvent(AsyncWebSocket *server, AsyncWebSocketClient *cli
         case WS_EVT_DISCONNECT:
             Serial.printf("WebSocket Client #%u Disconnected\n", client->id());
             break;
-        case WS_EVT_DATA:
+        case WS_EVT_DATA: {
             onWebSocketMessage(arg, data, len);
             break;
-        case WS_EVT_PONG:
+        } case WS_EVT_PONG:
         case WS_EVT_ERROR:
             break;
     }
@@ -147,4 +139,21 @@ void wifi::WebManager::tempSenderTask() {
         Serial.println(message);
         vTaskDelay(pdMS_TO_TICKS(1000));  // 1-second delay
     }
+}
+
+void wifi::WebManager::processCommand(String command) {
+
+    if (command == "get_temp") {
+        String tempMessage = "{\"temperature\": " + String(temperature) + "}";
+        ws.textAll(tempMessage);  // Send to all clients
+        return;
+    }
+
+    // hardware control will be moved to another class, but the web manager will have access to its interface
+    if (command == "off") {
+        digitalWrite(2, LOW);
+    } else {
+        digitalWrite(2, HIGH);
+    }
+
 }

@@ -20,9 +20,10 @@ class WebManager {
     private:
 
     void scanNetworks();
-    void onWebSocketMessage(void *arg, uint8_t *data, size_t len);
+    String onWebSocketMessage(void *arg, uint8_t *data, size_t len);
     void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
     void tempSenderTask();
+    void processCommand(String command);
 
     const char* ssid = "mcgee-2.4G";
     const char* password = "aiRey56v";
